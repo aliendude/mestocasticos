@@ -104,6 +104,9 @@ int main (int argc, char *argv[])
 
   Ptr<Node> s2 = CreateObject<Node> ();
 
+  Ptr<Node> s3 = CreateObject<Node> ();
+
+  Ptr<Node> s4 = CreateObject<Node> ();
   //internet stack ipv6
   InternetStackHelper internet;
   internet.SetIpv4StackInstall (false);//desactiva ipv6
@@ -111,7 +114,8 @@ int main (int argc, char *argv[])
   internet.Install (n1);
   internet.Install (s1);
   internet.Install (s2);
-
+  internet.Install (s3);
+  internet.Install (s4);
 
   // The below set of helpers will help us to put together the wifi NICs we want
   WifiHelper wifi;
@@ -146,7 +150,7 @@ int main (int argc, char *argv[])
 
 
   ////////////configuracion de Estacion 1 /////////////////////////////
-  Ssid ssid ("My-network");
+  Ssid ssid ("My-network1");
 
   wifiMac.SetType ("ns3::AdhocWifiMac",
                    "QosSupported", BooleanValue (true),
@@ -166,7 +170,7 @@ int main (int argc, char *argv[])
   //AnimationInterface::UpdateNodeColor (s1, 12, 2, 3); 
 
   ////////////configuracion de Estacion 2 /////////////////////////////
-  Ssid ssid1 ("My-network1");
+  Ssid ssid1 ("My-network2");
 
   wifiMac.SetType ("ns3::AdhocWifiMac",
                    "QosSupported", BooleanValue (false),
@@ -183,6 +187,45 @@ int main (int argc, char *argv[])
                "BE_BlockAckThreshold", UintegerValue (0));
   device_s2 = wifi.Install (wifiPhy, wifiMac, s2);
 
+    ////////////configuracion de Estacion 3 /////////////////////////////
+  Ssid ssid3 ("My-network3");
+
+  wifiMac.SetType ("ns3::AdhocWifiMac",
+                   "QosSupported", BooleanValue (true),
+                   "Ssid", SsidValue (ssid3),
+  /* setting blockack threshold for sta's BE queue */
+                   "BE_BlockAckThreshold", UintegerValue (2),
+  /* setting block inactivity timeout to 3*1024 = 3072 microseconds */
+                   "BE_BlockAckInactivityTimeout", UintegerValue (3));
+  NetDeviceContainer device_s3 = wifi.Install (wifiPhy, wifiMac, s3);
+
+
+  wifiMac.SetType ("ns3::ApWifiMac",
+               "QosSupported", BooleanValue (true),
+               "Ssid", SsidValue (ssid3),
+               "BE_BlockAckThreshold", UintegerValue (0));
+  device_s3 = wifi.Install (wifiPhy, wifiMac, s3);
+  //AnimationInterface::UpdateNodeColor (s1, 12, 2, 3); 
+
+  ////////////configuracion de Estacion 4 /////////////////////////////
+  Ssid ssid4 ("My-network4");
+
+  wifiMac.SetType ("ns3::AdhocWifiMac",
+                   "QosSupported", BooleanValue (false),
+                   "Ssid", SsidValue (ssid4),
+  /* setting blockack threshold for sta's BE queue */
+                   "BE_BlockAckThreshold", UintegerValue (2),
+  /* setting block inactivity timeout to 3*1024 = 3072 microseconds */
+                   "BE_BlockAckInactivityTimeout", UintegerValue (3));
+  NetDeviceContainer device_s4 = wifi.Install (wifiPhy, wifiMac, s4);
+
+  wifiMac.SetType ("ns3::ApWifiMac",
+               "QosSupported", BooleanValue (false),
+               "Ssid", SsidValue (ssid),
+               "BE_BlockAckThreshold", UintegerValue (0));
+  device_s4 = wifi.Install (wifiPhy, wifiMac, s4);
+
+
 
   //Ipv6 addresshelper:
   Ipv6AddressHelper ipv6;
@@ -190,7 +233,8 @@ int main (int argc, char *argv[])
   ipv6.Assign(devices_n1);
   ipv6.Assign(device_s1);
   ipv6.Assign(device_s2);
-
+  ipv6.Assign(device_s3);
+  ipv6.Assign(device_s4);
 
 
   // Note that with FixedRssLossModel, the positions below are not
@@ -211,7 +255,8 @@ int main (int argc, char *argv[])
   mobility.Install (n1);
   mobility.Install (s1);
   mobility.Install (s2);
-
+  mobility.Install (s3);
+  mobility.Install (s4);
 
   // Ipv4AddressHelper ipv4;
   // NS_LOG_INFO ("Assign IP Addresses.");
