@@ -119,12 +119,12 @@ int main (int argc, char *argv[])
   ObjectFactory position;
 
   position.SetTypeId ("ns3::RandomRectanglePositionAllocator");
-  position.Set ("X", StringValue ("ns3::UniformRandomVariable[Min=20|Max=700]"));
-  position.Set ("Y", StringValue ("ns3::UniformRandomVariable[Min=20|Max=700]"));
+  position.Set ("X", StringValue ("ns3::UniformRandomVariable[Min=20|Max=1400]"));
+  position.Set ("Y", StringValue ("ns3::UniformRandomVariable[Min=20|Max=1400]"));
   Ptr<PositionAllocator> PositionAlloc = position.Create ()->GetObject<PositionAllocator> ();
   mobility.SetMobilityModel ("ns3::RandomWaypointMobilityModel",
-                                      "Speed", StringValue ("ns3::ExponentialRandomVariable[Mean=5]"),
-                                      "Pause",StringValue ("ns3::ExponentialRandomVariable[Mean=5]"),
+                                      "Speed", StringValue ("ns3::ExponentialRandomVariable[Mean=50]"),
+                                      "Pause",StringValue ("ns3::ExponentialRandomVariable[Mean=50]"),
                                       "PositionAllocator", PointerValue (PositionAlloc));
                                         
   mobility.SetPositionAllocator (PositionAlloc);
@@ -161,12 +161,12 @@ int main (int argc, char *argv[])
   if (tracing == true)
     {
       AsciiTraceHelper ascii;
-      wifiPhy.EnableAsciiAll (ascii.CreateFileStream ("wifi-simple-adhoc-grid.tr"));
-      wifiPhy.EnablePcap ("wifi-simple-adhoc-grid", devices);
+      wifiPhy.EnableAsciiAll (ascii.CreateFileStream ("taller1.tr"));
+      wifiPhy.EnablePcap ("taller1", devices);
       // Trace routing tables
-      Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("wifi-simple-adhoc-grid.routes", std::ios::out);
+      Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("taller1.routes", std::ios::out);
       olsr6.PrintRoutingTableAllEvery (Seconds (2), routingStream);
-      Ptr<OutputStreamWrapper> neighborStream = Create<OutputStreamWrapper> ("wifi-simple-adhoc-grid.neighbors", std::ios::out);
+      Ptr<OutputStreamWrapper> neighborStream = Create<OutputStreamWrapper> ("taller1.neighbors", std::ios::out);
       olsr6.PrintNeighborCacheAllEvery (Seconds (2), neighborStream);
 
       // To do-- enable an IP-level trace that shows forwarding events only
@@ -177,10 +177,10 @@ int main (int argc, char *argv[])
                        source, packetSize, numPackets, interPacketInterval);
 
   // Output what we are doing
-  NS_LOG_UNCOND ("Testing from node " << sourceNode << " to " << sinkNode << " with grid distance " << distance);
+  //NS_LOG_UNCOND ("Testing from node " << sourceNode << " to " << sinkNode << " with grid distance " << distance);
 
   Simulator::Stop (Seconds (33.0));
-  AnimationInterface anim ("taller1.xml");
+  AnimationInterface anim ("taller1_anim.xml");
   Simulator::Run ();
   Simulator::Destroy ();
 
