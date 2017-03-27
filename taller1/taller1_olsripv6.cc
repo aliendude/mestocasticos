@@ -11,7 +11,8 @@
 #include "ns3/olsr6-helper.h"
 #include "ns3/netanim-module.h"
 #include "ns3/animation-interface.h"
-
+#include "ns3/qos-wifi-mac-helper.h"
+#include "ns3/on-off-helper.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -93,28 +94,31 @@ int main (int argc, char *argv[])
       wifi.EnableLogComponents ();  // Turn on all Wifi logging
     }
 
+  //Capa fisica
   YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
   // set it to zero; otherwise, gain will be added
   wifiPhy.Set ("RxGain", DoubleValue (-10) ); 
   // ns-3 supports RadioTap and Prism tracing extensions for 802.11b
   wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO); 
 
+
   YansWifiChannelHelper wifiChannel;
   wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
   wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel");
   wifiPhy.SetChannel (wifiChannel.Create ());
 
-  // Add an upper mac and disable rate control
-  WifiMacHelper wifiMac;
+  // Wifi mac con QoS
+  QosWifiMacHelper qosWifiMac = QosWifiMacHelper::Default ();
   wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                 "DataMode",StringValue (phyMode),
                                 "ControlMode",StringValue (phyMode));
   
   // Activar modo adhoc
-  wifiMac.SetType ("ns3::AdhocWifiMac");
-  NetDeviceContainer devices = wifi.Install (wifiPhy, wifiMac, c);
-
+  qosWifiMac.SetType ("ns3::AdhocWifiMac");
+  NetDeviceContainer devices = wifi.Install (wifiPhy, qosWifiMac, c);
+   
+  //Movilidad
   MobilityHelper mobility;
   ObjectFactory position;
 
@@ -138,6 +142,7 @@ int main (int argc, char *argv[])
   list.Add (staticRouting, 0);
   list.Add (olsr6, 10);
 
+  //Configuracion de ipv6
   InternetStackHelper internet;
   internet.SetIpv4StackInstall (false); //desactiva ipv4
   internet.SetRoutingHelper (list); // has effect on the next Install ()
@@ -147,7 +152,19 @@ int main (int argc, char *argv[])
   NS_LOG_INFO ("Assign IP Addresses.");
   //ipv4.SetBase ("10.1.1.0", "255.255.255.0");
   ipv6.SetBase ("2001:0:1::",Ipv6Prefix (64));
-  Ipv6InterfaceContainer i = ipv6.Assign (devices);
+  Ipv6InterfaceContainer ipv6Interface = ipv6.Assign (devices);
+
+  //Aplicaciones
+
+  ApplicationContainer apps1;
+  OnOffHelper onOffHelper1 ("ns3::UdpSocketFactory", Inet6SocketAddress (ipv6Interface.GetAddress (sourceNode, 0), 80));//80 es el puerto
+  onOffHelper1.SetAttribute ("DataRate", DataRateValue (DataRate ("11Mbps")));
+  //onOffHelper1.SetAttribute ("PacketSize", UintegerValue (packetSize));
+  //onOffHelper1.SetAttribute ("OnTime",  RandomVariableValue (ConstantVariable (1)));
+  //onOffHelper1.SetAttribute ("OffTime", RandomVariableValue (ConstantVariable (0)));
+  //onOffHelper1.SetAttribute ("AccessClass", UintegerValue (6));
+  apps1.Add (onOffHelper1.Install (c.Get (sourceNode)));
+  apps1.Start (Seconds (1.1));
 
   //Crea sockets asociados a los nodos sink y source y los conecta
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
@@ -157,7 +174,7 @@ int main (int argc, char *argv[])
   recvSink->SetRecvCallback (MakeCallback (&ReceivePacket));
 
   Ptr<Socket> source = Socket::CreateSocket (c.Get (sourceNode), tid);
-  Inet6SocketAddress remote = Inet6SocketAddress (i.GetAddress (sinkNode, 0), 80);
+  Inet6SocketAddress remote = Inet6SocketAddress (ipv6Interface.GetAddress (sinkNode, 0), 80);
   source->Connect (remote);
 
   if (tracing == true)
