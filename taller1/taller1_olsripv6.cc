@@ -107,16 +107,25 @@ int main (int argc, char *argv[])
   wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel");
   wifiPhy.SetChannel (wifiChannel.Create ());
 
+  // Wifi mac sin QoS
+  //NqosWifiMacHelper nqosWifiMac = NqosWifiMacHelper::Default ();
+
   // Wifi mac con QoS
   QosWifiMacHelper qosWifiMac = QosWifiMacHelper::Default ();
+
   wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                 "DataMode",StringValue (phyMode),
                                 "ControlMode",StringValue (phyMode));
+
+
   
   // Activar modo adhoc
+  //nqosWifiMac.SetType ("ns3::AdhocWifiMac");
+  //NetDeviceContainer devices_nqos = wifi.Install (wifiPhy, nqosWifiMac, c);
+
   qosWifiMac.SetType ("ns3::AdhocWifiMac");
-  NetDeviceContainer devices = wifi.Install (wifiPhy, qosWifiMac, c);
+  NetDeviceContainer devices_qos = wifi.Install (wifiPhy, qosWifiMac, c);
    
   //Movilidad
   MobilityHelper mobility;
@@ -152,19 +161,35 @@ int main (int argc, char *argv[])
   NS_LOG_INFO ("Assign IP Addresses.");
   //ipv4.SetBase ("10.1.1.0", "255.255.255.0");
   ipv6.SetBase ("2001:0:1::",Ipv6Prefix (64));
-  Ipv6InterfaceContainer ipv6Interface = ipv6.Assign (devices);
+  Ipv6InterfaceContainer ipv6Interface = ipv6.Assign (devices_qos);
+  //ipv6.Assign (devices_nqos);
+
+  //Nodos que ofrecen los servicios
+  int s1 = 2;
+  //int s2 = 3;
 
   //Aplicaciones
-
   ApplicationContainer apps1;
-  OnOffHelper onOffHelper1 ("ns3::UdpSocketFactory", Inet6SocketAddress (ipv6Interface.GetAddress (sourceNode, 0), 80));//80 es el puerto
+  OnOffHelper onOffHelper1 ("ns3::UdpSocketFactory", Inet6SocketAddress (ipv6Interface.GetAddress (s1, 0), 80));//80 es el puerto
   onOffHelper1.SetAttribute ("DataRate", DataRateValue (DataRate ("11Mbps")));
   //onOffHelper1.SetAttribute ("PacketSize", UintegerValue (packetSize));
   //onOffHelper1.SetAttribute ("OnTime",  RandomVariableValue (ConstantVariable (1)));
   //onOffHelper1.SetAttribute ("OffTime", RandomVariableValue (ConstantVariable (0)));
   //onOffHelper1.SetAttribute ("AccessClass", UintegerValue (6));
-  apps1.Add (onOffHelper1.Install (c.Get (sourceNode)));
-  apps1.Start (Seconds (1.1));
+  apps1.Add (onOffHelper1.Install (c.Get(s1)));
+  apps1.Start (Seconds (30.1));
+  apps1.Stop (Seconds (30.1));
+
+  // ApplicationContainer apps2;
+  // OnOffHelper onOffHelper2 ("ns3::UdpSocketFactory", Inet6SocketAddress (ipv6Interface.GetAddress (s2, 0), 80));//80 es el puerto
+  // onOffHelper2.SetAttribute ("DataRate", DataRateValue (DataRate ("11Mbps")));
+  //onOffHelper1.SetAttribute ("PacketSize", UintegerValue (packetSize));
+  //onOffHelper1.SetAttribute ("OnTime",  RandomVariableValue (ConstantVariable (1)));
+  //onOffHelper1.SetAttribute ("OffTime", RandomVariableValue (ConstantVariable (0)));
+  //onOffHelper1.SetAttribute ("AccessClass", UintegerValue (6));
+  // apps2.Add (onOffHelper1.Install (c.Get(s2)));
+  // apps2.Start (Seconds (1.1));
+  // apps2.Stop (Seconds (30.1));
 
   //Crea sockets asociados a los nodos sink y source y los conecta
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
@@ -181,7 +206,7 @@ int main (int argc, char *argv[])
     {
       AsciiTraceHelper ascii;
       wifiPhy.EnableAsciiAll (ascii.CreateFileStream ("taller1.tr"));
-      wifiPhy.EnablePcap ("taller1", devices);
+      wifiPhy.EnablePcap ("taller1", devices_qos);
       // Trace routing tables
       Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("taller1.routes", std::ios::out);
       olsr6.PrintRoutingTableAllEvery (Seconds (2), routingStream);
