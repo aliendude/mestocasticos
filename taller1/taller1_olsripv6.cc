@@ -9,6 +9,8 @@
 #include "ns3/ipv4-static-routing-helper.h"
 #include "ns3/ipv4-list-routing-helper.h"
 #include "ns3/olsr6-helper.h"
+#include "ns3/netanim-module.h"
+#include "ns3/animation-interface.h"
 
 #include <iostream>
 #include <fstream>
@@ -108,19 +110,17 @@ int main (int argc, char *argv[])
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                 "DataMode",StringValue (phyMode),
                                 "ControlMode",StringValue (phyMode));
+  
   // Set it to adhoc mode
-
-
-
   wifiMac.SetType ("ns3::AdhocWifiMac");
   NetDeviceContainer devices = wifi.Install (wifiPhy, wifiMac, c);
 
- MobilityHelper mobility;
+  MobilityHelper mobility;
   ObjectFactory position;
 
   position.SetTypeId ("ns3::RandomRectanglePositionAllocator");
-  position.Set ("X", StringValue ("ns3::UniformRandomVariable[Min=20|Max=70]"));
-  position.Set ("Y", StringValue ("ns3::UniformRandomVariable[Min=20|Max=70]"));
+  position.Set ("X", StringValue ("ns3::UniformRandomVariable[Min=20|Max=700]"));
+  position.Set ("Y", StringValue ("ns3::UniformRandomVariable[Min=20|Max=700]"));
   Ptr<PositionAllocator> PositionAlloc = position.Create ()->GetObject<PositionAllocator> ();
   mobility.SetMobilityModel ("ns3::RandomWaypointMobilityModel",
                                       "Speed", StringValue ("ns3::ExponentialRandomVariable[Mean=5]"),
@@ -128,18 +128,7 @@ int main (int argc, char *argv[])
                                       "PositionAllocator", PointerValue (PositionAlloc));
                                         
   mobility.SetPositionAllocator (PositionAlloc);
-    mobility.Install (c);
-
-
-
-
-
-
-
-
-
-
-
+  mobility.Install (c);
 
   // Enable OLSR
   Olsr6Helper olsr6;
@@ -191,6 +180,7 @@ int main (int argc, char *argv[])
   NS_LOG_UNCOND ("Testing from node " << sourceNode << " to " << sinkNode << " with grid distance " << distance);
 
   Simulator::Stop (Seconds (33.0));
+  AnimationInterface anim ("taller1.xml");
   Simulator::Run ();
   Simulator::Destroy ();
 
