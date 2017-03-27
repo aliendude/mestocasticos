@@ -111,7 +111,7 @@ int main (int argc, char *argv[])
                                 "DataMode",StringValue (phyMode),
                                 "ControlMode",StringValue (phyMode));
   
-  // Set it to adhoc mode
+  // Activar modo adhoc
   wifiMac.SetType ("ns3::AdhocWifiMac");
   NetDeviceContainer devices = wifi.Install (wifiPhy, wifiMac, c);
 
@@ -130,7 +130,7 @@ int main (int argc, char *argv[])
   mobility.SetPositionAllocator (PositionAlloc);
   mobility.Install (c);
 
-  // Enable OLSR
+  // Activar OLSR6
   Olsr6Helper olsr6;
   Ipv6StaticRoutingHelper staticRouting;
 
@@ -139,15 +139,17 @@ int main (int argc, char *argv[])
   list.Add (olsr6, 10);
 
   InternetStackHelper internet;
-  internet.SetIpv4StackInstall (false);//desactiva ipv6
+  internet.SetIpv4StackInstall (false); //desactiva ipv4
   internet.SetRoutingHelper (list); // has effect on the next Install ()
   internet.Install (c);
 
   Ipv6AddressHelper ipv6;
   NS_LOG_INFO ("Assign IP Addresses.");
-  //ipv6.SetBase ("10.1.1.0", "255.255.255.0");
+  //ipv4.SetBase ("10.1.1.0", "255.255.255.0");
+  ipv6.SetBase ("2001:0:1::",Ipv6Prefix (64));
   Ipv6InterfaceContainer i = ipv6.Assign (devices);
 
+  //Crea sockets asociados a los nodos sink y source y los conecta
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
   Ptr<Socket> recvSink = Socket::CreateSocket (c.Get (sinkNode), tid);
   Inet6SocketAddress local = Inet6SocketAddress (Ipv6Address::GetAny (), 80);
