@@ -1,73 +1,3 @@
-/* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
-/*
- * Copyright (c) 2009 University of Washington
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- */
-
-//
-// This program configures a grid (default 5x5) of nodes on an 
-// 802.11b physical layer, with
-// 802.11b NICs in adhoc mode, and by default, sends one packet of 1000 
-// (application) bytes to node 1.
-//
-// The default layout is like this, on a 2-D grid.
-//
-// n20  n21  n22  n23  n24
-// n15  n16  n17  n18  n19
-// n10  n11  n12  n13  n14
-// n5   n6   n7   n8   n9
-// n0   n1   n2   n3   n4
-//
-// the layout is affected by the parameters given to GridPositionAllocator;
-// by default, GridWidth is 5 and numNodes is 25..
-//
-// There are a number of command-line options available to control
-// the default behavior.  The list of available command-line options
-// can be listed with the following command:
-// ./waf --run "wifi-simple-adhoc-grid --help"
-//
-// Note that all ns-3 attributes (not just the ones exposed in the below
-// script) can be changed at command line; see the ns-3 documentation.
-//
-// For instance, for this configuration, the physical layer will
-// stop successfully receiving packets when distance increases beyond
-// the default of 500m.
-// To see this effect, try running:
-//
-// ./waf --run "wifi-simple-adhoc --distance=500"
-// ./waf --run "wifi-simple-adhoc --distance=1000"
-// ./waf --run "wifi-simple-adhoc --distance=1500"
-// 
-// The source node and sink node can be changed like this:
-// 
-// ./waf --run "wifi-simple-adhoc --sourceNode=20 --sinkNode=10"
-//
-// This script can also be helpful to put the Wifi layer into verbose
-// logging mode; this command will turn on all wifi logging:
-// 
-// ./waf --run "wifi-simple-adhoc-grid --verbose=1"
-//
-// By default, trace file writing is off-- to enable it, try:
-// ./waf --run "wifi-simple-adhoc-grid --tracing=1"
-//
-// When you are done tracing, you will notice many pcap trace files 
-// in your directory.  If you have tcpdump installed, you can try this:
-//
-// tcpdump -r wifi-simple-adhoc-grid-0-0.pcap -nn -tt
-//
 
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
@@ -99,7 +29,7 @@ void ReceivePacket (Ptr<Socket> socket)
 
 static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, 
                              uint32_t pktCount, Time pktInterval )
-{
+{ 
   if (pktCount > 0)
     {
       socket->Send (Create<Packet> (pktSize));
@@ -124,7 +54,7 @@ int main (int argc, char *argv[])
   uint32_t sourceNode = 24;
   double interval = 1.0; // seconds
   bool verbose = false;
-  bool tracing = false;
+  bool tracing = true;
 
   CommandLine cmd;
 
@@ -179,19 +109,37 @@ int main (int argc, char *argv[])
                                 "DataMode",StringValue (phyMode),
                                 "ControlMode",StringValue (phyMode));
   // Set it to adhoc mode
+
+
+
   wifiMac.SetType ("ns3::AdhocWifiMac");
   NetDeviceContainer devices = wifi.Install (wifiPhy, wifiMac, c);
 
-  MobilityHelper mobility;
-  mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (0.0),
-                                 "MinY", DoubleValue (0.0),
-                                 "DeltaX", DoubleValue (distance),
-                                 "DeltaY", DoubleValue (distance),
-                                 "GridWidth", UintegerValue (5),
-                                 "LayoutType", StringValue ("RowFirst"));
-  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-  mobility.Install (c);
+ MobilityHelper mobility;
+  ObjectFactory position;
+
+  position.SetTypeId ("ns3::RandomRectanglePositionAllocator");
+  position.Set ("X", StringValue ("ns3::UniformRandomVariable[Min=20|Max=70]"));
+  position.Set ("Y", StringValue ("ns3::UniformRandomVariable[Min=20|Max=70]"));
+  Ptr<PositionAllocator> PositionAlloc = position.Create ()->GetObject<PositionAllocator> ();
+  mobility.SetMobilityModel ("ns3::RandomWaypointMobilityModel",
+                                      "Speed", StringValue ("ns3::ExponentialRandomVariable[Mean=5]"),
+                                      "Pause",StringValue ("ns3::ExponentialRandomVariable[Mean=5]"),
+                                      "PositionAllocator", PointerValue (PositionAlloc));
+                                        
+  mobility.SetPositionAllocator (PositionAlloc);
+    mobility.Install (c);
+
+
+
+
+
+
+
+
+
+
+
 
   // Enable OLSR
   Olsr6Helper olsr6;
@@ -248,4 +196,3 @@ int main (int argc, char *argv[])
 
   return 0;
 }
-
