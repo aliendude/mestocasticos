@@ -1,73 +1,3 @@
-/* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
-/*
- * Copyright (c) 2009 University of Washington
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- */
-
-//
-// This program configures a grid (default 5x5) of nodes on an 
-// 802.11b physical layer, with
-// 802.11b NICs in adhoc mode, and by default, sends one packet of 1000 
-// (application) bytes to node 1.
-//
-// The default layout is like this, on a 2-D grid.
-//
-// n20  n21  n22  n23  n24
-// n15  n16  n17  n18  n19
-// n10  n11  n12  n13  n14
-// n5   n6   n7   n8   n9
-// n0   n1   n2   n3   n4
-//
-// the layout is affected by the parameters given to GridPositionAllocator;
-// by default, GridWidth is 5 and numNodes is 25..
-//
-// There are a number of command-line options available to control
-// the default behavior.  The list of available command-line options
-// can be listed with the following command:
-// ./waf --run "wifi-simple-adhoc-grid --help"
-//
-// Note that all ns-3 attributes (not just the ones exposed in the below
-// script) can be changed at command line; see the ns-3 documentation.
-//
-// For instance, for this configuration, the physical layer will
-// stop successfully receiving packets when distance increases beyond
-// the default of 500m.
-// To see this effect, try running:
-//
-// ./waf --run "wifi-simple-adhoc --distance=500"
-// ./waf --run "wifi-simple-adhoc --distance=1000"
-// ./waf --run "wifi-simple-adhoc --distance=1500"
-// 
-// The source node and sink node can be changed like this:
-// 
-// ./waf --run "wifi-simple-adhoc --sourceNode=20 --sinkNode=10"
-//
-// This script can also be helpful to put the Wifi layer into verbose
-// logging mode; this command will turn on all wifi logging:
-// 
-// ./waf --run "wifi-simple-adhoc-grid --verbose=1"
-//
-// By default, trace file writing is off-- to enable it, try:
-// ./waf --run "wifi-simple-adhoc-grid --tracing=1"
-//
-// When you are done tracing, you will notice many pcap trace files 
-// in your directory.  If you have tcpdump installed, you can try this:
-//
-// tcpdump -r wifi-simple-adhoc-grid-0-0.pcap -nn -tt
-//
 
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
@@ -79,7 +9,10 @@
 #include "ns3/ipv4-static-routing-helper.h"
 #include "ns3/ipv4-list-routing-helper.h"
 #include "ns3/olsr6-helper.h"
-
+#include "ns3/netanim-module.h"
+#include "ns3/animation-interface.h"
+#include "ns3/qos-wifi-mac-helper.h"
+#include "ns3/on-off-helper.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -99,7 +32,7 @@ void ReceivePacket (Ptr<Socket> socket)
 
 static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, 
                              uint32_t pktCount, Time pktInterval )
-{
+{ 
   if (pktCount > 0)
     {
       socket->Send (Create<Packet> (pktSize));
@@ -124,7 +57,7 @@ int main (int argc, char *argv[])
   uint32_t sourceNode = 24;
   double interval = 1.0; // seconds
   bool verbose = false;
-  bool tracing = false;
+  bool tracing = true;
 
   CommandLine cmd;
 
@@ -161,39 +94,56 @@ int main (int argc, char *argv[])
       wifi.EnableLogComponents ();  // Turn on all Wifi logging
     }
 
+  //Capa fisica
   YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
   // set it to zero; otherwise, gain will be added
   wifiPhy.Set ("RxGain", DoubleValue (-10) ); 
   // ns-3 supports RadioTap and Prism tracing extensions for 802.11b
   wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO); 
 
+
   YansWifiChannelHelper wifiChannel;
   wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
   wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel");
   wifiPhy.SetChannel (wifiChannel.Create ());
 
-  // Add an upper mac and disable rate control
-  WifiMacHelper wifiMac;
+  // Wifi mac sin QoS
+  //NqosWifiMacHelper nqosWifiMac = NqosWifiMacHelper::Default ();
+
+  // Wifi mac con QoS
+  QosWifiMacHelper qosWifiMac = QosWifiMacHelper::Default ();
+
   wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                 "DataMode",StringValue (phyMode),
                                 "ControlMode",StringValue (phyMode));
-  // Set it to adhoc mode
-  wifiMac.SetType ("ns3::AdhocWifiMac");
-  NetDeviceContainer devices = wifi.Install (wifiPhy, wifiMac, c);
 
+
+  
+  // Activar modo adhoc
+  //nqosWifiMac.SetType ("ns3::AdhocWifiMac");
+  //NetDeviceContainer devices_nqos = wifi.Install (wifiPhy, nqosWifiMac, c);
+
+  qosWifiMac.SetType ("ns3::AdhocWifiMac");
+  NetDeviceContainer devices_qos = wifi.Install (wifiPhy, qosWifiMac, c);
+   
+  //Movilidad
   MobilityHelper mobility;
-  mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (0.0),
-                                 "MinY", DoubleValue (0.0),
-                                 "DeltaX", DoubleValue (distance),
-                                 "DeltaY", DoubleValue (distance),
-                                 "GridWidth", UintegerValue (5),
-                                 "LayoutType", StringValue ("RowFirst"));
-  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+  ObjectFactory position;
+
+  position.SetTypeId ("ns3::RandomRectanglePositionAllocator");
+  position.Set ("X", StringValue ("ns3::UniformRandomVariable[Min=20|Max=1400]"));
+  position.Set ("Y", StringValue ("ns3::UniformRandomVariable[Min=20|Max=1400]"));
+  Ptr<PositionAllocator> PositionAlloc = position.Create ()->GetObject<PositionAllocator> ();
+  mobility.SetMobilityModel ("ns3::RandomWaypointMobilityModel",
+                                      "Speed", StringValue ("ns3::ExponentialRandomVariable[Mean=50]"),
+                                      "Pause",StringValue ("ns3::ExponentialRandomVariable[Mean=50]"),
+                                      "PositionAllocator", PointerValue (PositionAlloc));
+                                        
+  mobility.SetPositionAllocator (PositionAlloc);
   mobility.Install (c);
 
-  // Enable OLSR
+  // Activar OLSR6
   Olsr6Helper olsr6;
   Ipv6StaticRoutingHelper staticRouting;
 
@@ -201,16 +151,47 @@ int main (int argc, char *argv[])
   list.Add (staticRouting, 0);
   list.Add (olsr6, 10);
 
+  //Configuracion de ipv6
   InternetStackHelper internet;
-  internet.SetIpv4StackInstall (false);//desactiva ipv6
+  internet.SetIpv4StackInstall (false); //desactiva ipv4
   internet.SetRoutingHelper (list); // has effect on the next Install ()
   internet.Install (c);
 
   Ipv6AddressHelper ipv6;
   NS_LOG_INFO ("Assign IP Addresses.");
-  //ipv6.SetBase ("10.1.1.0", "255.255.255.0");
-  Ipv6InterfaceContainer i = ipv6.Assign (devices);
+  //ipv4.SetBase ("10.1.1.0", "255.255.255.0");
+  ipv6.SetBase ("2001:0:1::",Ipv6Prefix (64));
+  Ipv6InterfaceContainer ipv6Interface = ipv6.Assign (devices_qos);
+  //ipv6.Assign (devices_nqos);
 
+  //Nodos que ofrecen los servicios
+  int s1 = 2;
+  //int s2 = 3;
+
+  //Aplicaciones
+  ApplicationContainer apps1;
+  OnOffHelper onOffHelper1 ("ns3::UdpSocketFactory", Inet6SocketAddress (ipv6Interface.GetAddress (s1, 0), 80));//80 es el puerto
+  onOffHelper1.SetAttribute ("DataRate", DataRateValue (DataRate ("11Mbps")));
+  //onOffHelper1.SetAttribute ("PacketSize", UintegerValue (packetSize));
+  //onOffHelper1.SetAttribute ("OnTime",  RandomVariableValue (ConstantVariable (1)));
+  //onOffHelper1.SetAttribute ("OffTime", RandomVariableValue (ConstantVariable (0)));
+  //onOffHelper1.SetAttribute ("AccessClass", UintegerValue (6));
+  apps1.Add (onOffHelper1.Install (c.Get(s1)));
+  apps1.Start (Seconds (30.1));
+  apps1.Stop (Seconds (30.1));
+
+  // ApplicationContainer apps2;
+  // OnOffHelper onOffHelper2 ("ns3::UdpSocketFactory", Inet6SocketAddress (ipv6Interface.GetAddress (s2, 0), 80));//80 es el puerto
+  // onOffHelper2.SetAttribute ("DataRate", DataRateValue (DataRate ("11Mbps")));
+  //onOffHelper1.SetAttribute ("PacketSize", UintegerValue (packetSize));
+  //onOffHelper1.SetAttribute ("OnTime",  RandomVariableValue (ConstantVariable (1)));
+  //onOffHelper1.SetAttribute ("OffTime", RandomVariableValue (ConstantVariable (0)));
+  //onOffHelper1.SetAttribute ("AccessClass", UintegerValue (6));
+  // apps2.Add (onOffHelper1.Install (c.Get(s2)));
+  // apps2.Start (Seconds (1.1));
+  // apps2.Stop (Seconds (30.1));
+
+  //Crea sockets asociados a los nodos sink y source y los conecta
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
   Ptr<Socket> recvSink = Socket::CreateSocket (c.Get (sinkNode), tid);
   Inet6SocketAddress local = Inet6SocketAddress (Ipv6Address::GetAny (), 80);
@@ -218,18 +199,18 @@ int main (int argc, char *argv[])
   recvSink->SetRecvCallback (MakeCallback (&ReceivePacket));
 
   Ptr<Socket> source = Socket::CreateSocket (c.Get (sourceNode), tid);
-  Inet6SocketAddress remote = Inet6SocketAddress (i.GetAddress (sinkNode, 0), 80);
+  Inet6SocketAddress remote = Inet6SocketAddress (ipv6Interface.GetAddress (sinkNode, 0), 80);
   source->Connect (remote);
 
   if (tracing == true)
     {
       AsciiTraceHelper ascii;
-      wifiPhy.EnableAsciiAll (ascii.CreateFileStream ("wifi-simple-adhoc-grid.tr"));
-      wifiPhy.EnablePcap ("wifi-simple-adhoc-grid", devices);
+      wifiPhy.EnableAsciiAll (ascii.CreateFileStream ("taller1.tr"));
+      wifiPhy.EnablePcap ("taller1", devices_qos);
       // Trace routing tables
-      Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("wifi-simple-adhoc-grid.routes", std::ios::out);
+      Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("taller1.routes", std::ios::out);
       olsr6.PrintRoutingTableAllEvery (Seconds (2), routingStream);
-      Ptr<OutputStreamWrapper> neighborStream = Create<OutputStreamWrapper> ("wifi-simple-adhoc-grid.neighbors", std::ios::out);
+      Ptr<OutputStreamWrapper> neighborStream = Create<OutputStreamWrapper> ("taller1.neighbors", std::ios::out);
       olsr6.PrintNeighborCacheAllEvery (Seconds (2), neighborStream);
 
       // To do-- enable an IP-level trace that shows forwarding events only
@@ -240,12 +221,12 @@ int main (int argc, char *argv[])
                        source, packetSize, numPackets, interPacketInterval);
 
   // Output what we are doing
-  NS_LOG_UNCOND ("Testing from node " << sourceNode << " to " << sinkNode << " with grid distance " << distance);
+  //NS_LOG_UNCOND ("Testing from node " << sourceNode << " to " << sinkNode << " with grid distance " << distance);
 
   Simulator::Stop (Seconds (33.0));
+  AnimationInterface anim ("taller1_anim.xml");
   Simulator::Run ();
   Simulator::Destroy ();
 
   return 0;
 }
-
