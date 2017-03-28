@@ -160,10 +160,9 @@ int main (int argc, char *argv[])
   Ipv6AddressHelper ipv6;
   NS_LOG_INFO ("Assign IP Addresses.");
   //ipv4.SetBase ("10.1.1.0", "255.255.255.0");
-  ipv6.SetBase ("2001:0:1::",Ipv6Prefix (64));
+  ipv6.SetBase ("2001:0:1::", Ipv6Prefix (64));
   Ipv6InterfaceContainer ipv6Interface = ipv6.Assign (devices_qos);
   Ipv6InterfaceContainer ipv6Interface2 = ipv6.Assign (devices_nqos);
-  //ipv6.Assign (devices_nqos);
 
   //Nodos que ofrecen los servicios
   int s1 = 2;
@@ -173,7 +172,7 @@ int main (int argc, char *argv[])
 
   //Aplicaciones
 
-  /* ------	 	1. VOICE TRAFFIC		 ------ */
+  /* ------   1. VOICE TRAFFIC     ------ */
   ApplicationContainer apps1;
   OnOffHelper onOffHelper1 ("ns3::UdpSocketFactory", Inet6SocketAddress (ipv6Interface.GetAddress (s1, 0), 80));//80 es el puerto
   onOffHelper1.SetAttribute ("DataRate", DataRateValue (DataRate ("11Mbps")));
@@ -183,9 +182,9 @@ int main (int argc, char *argv[])
   //onOffHelper1.SetAttribute ("AccessClass", UintegerValue (6));
   apps1.Add (onOffHelper1.Install (c.Get(s1)));
   apps1.Start (Seconds (1.1));
- 
+  apps1.Stop (Seconds (30.0));
   
-   /* ------		2. VIDEO 		------ */
+   /* ------    2. VIDEO    ------ */
   ApplicationContainer apps2;
   OnOffHelper onOffHelper2 ("ns3::UdpSocketFactory", Inet6SocketAddress (ipv6Interface.GetAddress (s2, 0), 80));//80 es el puerto
   onOffHelper2.SetAttribute ("DataRate", DataRateValue (DataRate ("11Mbps")));
@@ -193,10 +192,11 @@ int main (int argc, char *argv[])
   //onOffHelper1.SetAttribute ("OnTime",  ns3::RandomVariable (ConstantVariable (1)));
   //onOffHelper1.SetAttribute ("OffTime", RandomVariableValue (ConstantVariable (0)));
   //onOffHelper1.SetAttribute ("AccessClass", UintegerValue (6));
-  apps2.Add (onOffHelper1.Install (c.Get(s2)));
+  apps2.Add (onOffHelper2.Install (c.Get(s2)));
   apps2.Start (Seconds (1.1));
+  apps2.Stop (Seconds (30.0));
 
-  /* ------		3. BEST EFFORT 		------ */
+  // /* ------    3. BEST EFFORT    ------ */
   ApplicationContainer apps3;
   OnOffHelper onOffHelper3 ("ns3::UdpSocketFactory", Inet6SocketAddress (ipv6Interface2.GetAddress (s3, 0), 80));
   onOffHelper3.SetAttribute ("DataRate", DataRateValue (DataRate ("11Mbps")));
@@ -204,11 +204,11 @@ int main (int argc, char *argv[])
   //onOffHelper3.SetAttribute ("OnTime",  RandomVariableValue (ConstantVariable (1)));
   //onOffHelper3.SetAttribute ("OffTime", RandomVariableValue (ConstantVariable (0)));
   //onOffHelper3.SetAttribute ("AccessClass", UintegerValue (0));
-  apps3.Add (onOffHelper1.Install (c.Get(s3)));
+  apps3.Add (onOffHelper3.Install (c.Get(s3)));
   apps3.Start (Seconds (1.1));
+  apps3.Stop (Seconds (30.0));
   
-  
-  /* ------		4. BACKGROUND TRAFFIC		------ */
+  /* ------    4. BACKGROUND TRAFFIC   ------ */
   ApplicationContainer apps4;
   OnOffHelper onOffHelper4 ("ns3::UdpSocketFactory", Inet6SocketAddress (ipv6Interface2.GetAddress (s4, 0), 80));
   onOffHelper4.SetAttribute ("DataRate", DataRateValue (DataRate ("11Mbps")));
@@ -216,9 +216,9 @@ int main (int argc, char *argv[])
   //onOffHelper4.SetAttribute ("OnTime",  RandomVariableValue (ConstantVariable (1)));
   //onOffHelper4.SetAttribute ("OffTime", RandomVariableValue (ConstantVariable (0)));
   //onOffHelper4.SetAttribute ("AccessClass", UintegerValue (1));
-  apps4.Add (onOffHelper1.Install (c.Get(s4)));
+  apps4.Add (onOffHelper4.Install (c.Get(s4)));
   apps4.Start (Seconds (1.1));
-
+  apps4.Stop (Seconds (30.0));
 
   //Crea sockets asociados a los nodos sink y source y los conecta
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
@@ -235,7 +235,8 @@ int main (int argc, char *argv[])
     {
       AsciiTraceHelper ascii;
       wifiPhy.EnableAsciiAll (ascii.CreateFileStream ("taller1.tr"));
-      wifiPhy.EnablePcap ("taller1", devices_qos);
+      wifiPhy.EnablePcap ("taller1_qos", devices_qos);
+      wifiPhy.EnablePcap ("taller1_nqos", devices_nqos);
       // Trace routing tables
       Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("taller1.routes", std::ios::out);
       olsr6.PrintRoutingTableAllEvery (Seconds (2), routingStream);
